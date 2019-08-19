@@ -181,11 +181,13 @@ server <- function(input, output) {
             
             phi <- highest_perc(sheet$name[i], sheet$league[i], pro)
             
-            temp <- rbind(temp, c(clv, pro, phi))
+            temp <- rbind(temp, c(clv, mcp, phi))
         }
         
-        colnames(temp) <- c('clv', 'pro', 'phi')
+        #colnames(temp) <- c('clv', 'mcp', 'phi')
         sheet <- cbind(sheet, temp)
+        
+        colnames(sheet) <- c('Pokemon', 'League', 'Attack', 'Defense', 'Stamina', 'Level', 'CP', '% Max Stats')
         sheet
     }
     
