@@ -188,6 +188,7 @@ server <- function(input, output) {
         sheet <- cbind(sheet, temp)
         sheet
     }
+    
     # show the final result
     output$summary_iv <- DT::renderDataTable({
         input$analyze
@@ -198,33 +199,24 @@ server <- function(input, output) {
                 final_table <- one_analysis(poke, input$league)
                 final_table
             }else if(input$source == "mtext"){
-                data <- input$text
-                data <- read.table(text=gsub("(?<=[a-z])\\s+\n", "\n", data, perl=TRUE), 
+                data_poke <- input$text
+                data_poke <- read.table(text=gsub("(?<=[a-z])\\s+\n", "\n", data_poke, perl=TRUE), 
                                    header=FALSE, col.names = c("name", "league", 'iva', 'ivd', 'ivs'))
-                data <- transform(data, name = as.character(name), league = as.character(league))
+                data_poke <- transform(data_poke, name = as.character(name), league = as.character(league))
                 
-                final_table <- many_analysis(data)
+                final_table <- many_analysis(data_poke)
                 final_table
             }else if(input$source == "mfile"){
-                data <- input_file()
-                colnames(data) <- c('name', 'league', 'iva', 'ivd', 'ivs')
+                data_poke <- input_file()
+                colnames(data_poke) <- c('name', 'league', 'iva', 'ivd', 'ivs')
+                data_poke <- transform(data_poke, name = as.character(name), league = as.character(league))
                 
-                final_table <- many_analysis(data)
+                final_table <- many_analysis(data_poke)
                 final_table
             }
         })
     }, rownames = FALSE)
-    
-    # output$table <- renderTable({
-    #     if(input$source == "mtext"){
-    #         data <- input$text
-    #         data <- read.table(text=gsub("(?<=[a-z])\\s+\n", "\n", data, perl=TRUE), 
-    #                 header=FALSE, col.names = c("name", "league", 'iva', 'ivd', 'ivs'))
-    #         data <- transform(data, name = as.character(name), league = as.character(league))
-    #         
-    #         data
-    #     }
-    # })
+
 }
 
 shinyApp(ui = ui, server = server)
