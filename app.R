@@ -1,5 +1,7 @@
 library(shiny)
 
+options(shiny.sanitize.errors = FALSE)
+
 # import pokemon stats file
 data_stats <- read.csv('pokemon_stats.csv')
 
@@ -9,7 +11,19 @@ lvl_cpm <- read.csv('level_cpm.csv')
 # import the highest product
 high_pr <- read.csv('highest_product.csv')
 
+my_css <- "
+#tab1 {
+    border-collapse: collapse;
+}
+
+.th1, .td1 {
+    padding: 8px 8px 8px 0px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+"
 ui <- fluidPage(
+    tags$style(my_css),
     h1("PvP IV Spread Analysis"),
     sidebarLayout(
         sidebarPanel(
@@ -32,16 +46,50 @@ ui <- fluidPage(
             ),
             conditionalPanel(
                 condition = "input.source == 'mtext'",
-                textAreaInput("text", "Enter text", placeholder = 'Pokemon League Attack-IV Defense-IV Stamina-IV\nFor example:\nMuk Great 2 3 4', rows = 7)
+                textAreaInput("text", "Enter text", 
+                              placeholder = 'Pokemon League Attack-IV Defense-IV Stamina-IV\nFor example:\nMuk Great 2 3 4\nMuk great 2 3 4\nmuk Great 2 3 4\nmuk great 2 3 4', rows = 7),
+                tags$b('Pokemon Name Entry: '), 'NameAttribute\n',
+                tags$table(id='tab01',
+                    tags$tr(
+                        tags$th(class = 'th1', 'Attribute'),
+                        tags$th(class = 'th1', 'Examples')
+                    ),
+                    tags$tr(
+                        tags$td(class = 'td1', 'Regional variant'),
+                        tags$td(class = 'td1', 'RaticateAlolan, SandslashAlolan, ExeggutorAlolan')
+                    ),
+                    tags$tr(
+                        tags$td(class = 'td1', 'Forme'),
+                        tags$td(class = 'td1', 'DeoxysNormal, ShayminSky, GiratinaAltered')
+                    ),
+                    tags$tr(
+                        tags$td(class = 'td1', 'Cloak'),
+                        tags$td(class = 'td1', 'WormadamPlant, WormadamSandy, WormadamTrash')
+                    ),
+                    tags$tr(
+                        tags$td(class = 'td1', 'Sex'),
+                        tags$td(class = 'td1', 'NidoranF, NidoranM')
+                    ),
+                    tags$tr(
+                        tags$td(class = 'td1', 'Other'),
+                        tags$td(class = 'td1', 'RotomNonGhost')
+                    ),
+                    tags$tr(
+                        tags$td(class = 'td1', colspan="2", "Please remove all special characters (Space'-.): MrMime, Farfetchd, HoOH")
+                    )
+                ),
+                HTML("<br><br>")
             ),
             conditionalPanel(
                 condition = "input.source == 'mfile'",
-                fileInput("file", "Select a file")
+                fileInput("file", "Select a file"),
+                p('Please upload only ', strong('.csv'), ' extention file. If you want an example of the file to upload, please download the file below.'),
+                downloadButton("downloadSample", label = "Download Sample"),
+                HTML("<br><br><br>")
             ),
             actionButton(inputId = 'analyze', label = 'Analyze')
         ),
         mainPanel(
-            tableOutput('table'),
             DT::dataTableOutput("summary_iv")
         )
     )
@@ -61,15 +109,20 @@ server <- function(input, output) {
         lvl_cpm[which.min(data_temp), "level"]
     }
     
+    firstup <- function(x) {
+        substr(x, 1, 1) <- toupper(substr(x, 1, 1))
+        x
+    }
+    
     # calculate the percentage of highest
     highest_perc <- function(name, league, product){
-        if(name %in% high_pr$pokemon){
-            if(league == 'Great'){
-                high_product <- high_pr[high_pr$pokemon == name, "great"]
-            }else if(league == 'Ultra'){
-                high_product <- high_pr[high_pr$pokemon == name, "ultra"]
-            }else if(league == 'Master'){
-                high_product <- high_pr[high_pr$pokemon == name, "master"]
+        if(firstup(name) %in% high_pr$pokemon){
+            if(tolower(league) == 'great'){
+                high_product <- high_pr[high_pr$pokemon == firstup(name), "great"]
+            }else if(tolower(league) == 'ultra'){
+                high_product <- high_pr[high_pr$pokemon == firstup(name), "ultra"]
+            }else if(tolower(league) == 'master'){
+                high_product <- high_pr[high_pr$pokemon == firstup(name), "master"]
             }
             
             phi <- round((product/high_product)*100, 2)
@@ -150,38 +203,50 @@ server <- function(input, output) {
         temp <- data.frame()
         for(i in 1:dim(sheet)[1]){
             # check maximum level
-            if(sheet$league[i] == 'Great'){
+            if(tolower(sheet$league[i]) == 'great'){
                 leag_value <- 1500
-            }else if(sheet$league[i] == 'Ultra'){
+            }else if(tolower(sheet$league[i]) == 'ultra'){
                 leag_value <- 2500
-            }else if(sheet$league[i] == 'Master'){
+            }else if(tolower(sheet$league[i]) == 'master'){
                 leag_value <- 4431 #max cp from Slaking lvl40
+            }else{
+                stop(paste('The League (', sheet$league[i], ') in the row ', i, ' was not recognized by our system', sep = ''))
             }
-            pokemon <- data_stats[data_stats$pokemon == sheet$name[i], 2:4]
-            cpm<- sqrt((leag_value*10)/((pokemon$attack + sheet$iva[i])*sqrt(pokemon$defense + sheet$ivd[i])*sqrt(pokemon$stamina + sheet$ivs[i])))
             
-            lvl <- sapply(cpm, lvl_func)
-            cp1 <- trunc(((pokemon$attack + sheet$iva[i])*sqrt(pokemon$defense + sheet$ivd[i])*
-                   sqrt(pokemon$stamina + sheet$ivs[i])*lvl_cpm[lvl_cpm$level == min(lvl+0.5, 40), "cpm"]^2)/10)
-            
-            clv <- ifelse(cp1 == leag_value, min(lvl+0.5, 40), lvl)
-            
-            # maximum CP
-            mcp <- trunc(((pokemon$attack + sheet$iva[i])*sqrt(pokemon$defense + sheet$ivd[i])*
-                   sqrt(pokemon$stamina + sheet$ivs[i])*lvl_cpm[lvl_cpm$level == clv, "cpm"]^2)/10)
-            
-            # updating cpm values
-            cpm <- lvl_cpm[lvl_cpm$level == clv, "cpm"]
-            
-            # calculate effective stats
-            sta <- (pokemon$attack + sheet$iva[i])*cpm
-            std <- (pokemon$defense+ sheet$ivd[i])*cpm
-            sts <- floor((pokemon$stamina+ sheet$ivs[i])*cpm)
-            pro <- round(sta*std*sts)
-            
-            phi <- highest_perc(sheet$name[i], sheet$league[i], pro)
-            
-            temp <- rbind(temp, c(clv, mcp, phi))
+            if(!(firstup(sheet$name[i]) %in% data_stats$pokemon)){
+                stop(paste('The Pokemon (', sheet$name[i], ') in the row ', i, ' is not in our dataset', sep = ''))
+            }else{
+                pokemon <- data_stats[data_stats$pokemon == firstup(sheet$name[i]), 2:4]
+                
+                if(!((sheet$iva[i] >= 0 ) & (sheet$iva[i] <= 15) & (sheet$ivd[i] >= 0 ) & (sheet$ivd[i] <= 15) & (sheet$ivs[i] >= 0 ) & (sheet$ivs[i] <= 15))){
+                    stop(paste('IV values must be between 0 and 15 inclusive, please check row', i))
+                }else{
+                    cpm<- sqrt((leag_value*10)/((pokemon$attack + sheet$iva[i])*sqrt(pokemon$defense + sheet$ivd[i])*sqrt(pokemon$stamina + sheet$ivs[i])))
+                    
+                    lvl <- sapply(cpm, lvl_func)
+                    cp1 <- trunc(((pokemon$attack + sheet$iva[i])*sqrt(pokemon$defense + sheet$ivd[i])*
+                           sqrt(pokemon$stamina + sheet$ivs[i])*lvl_cpm[lvl_cpm$level == min(lvl+0.5, 40), "cpm"]^2)/10)
+                    
+                    clv <- ifelse(cp1 == leag_value, min(lvl+0.5, 40), lvl)
+                    
+                    # maximum CP
+                    mcp <- trunc(((pokemon$attack + sheet$iva[i])*sqrt(pokemon$defense + sheet$ivd[i])*
+                           sqrt(pokemon$stamina + sheet$ivs[i])*lvl_cpm[lvl_cpm$level == clv, "cpm"]^2)/10)
+                    
+                    # updating cpm values
+                    cpm <- lvl_cpm[lvl_cpm$level == clv, "cpm"]
+                    
+                    # calculate effective stats
+                    sta <- (pokemon$attack + sheet$iva[i])*cpm
+                    std <- (pokemon$defense+ sheet$ivd[i])*cpm
+                    sts <- floor((pokemon$stamina+ sheet$ivs[i])*cpm)
+                    pro <- round(sta*std*sts)
+                    
+                    phi <- highest_perc(sheet$name[i], sheet$league[i], pro)
+                    
+                    temp <- rbind(temp, c(clv, mcp, phi))
+                }
+            }
         }
         
         #colnames(temp) <- c('clv', 'mcp', 'phi')
@@ -218,6 +283,18 @@ server <- function(input, output) {
             }
         })
     }, rownames = FALSE)
+    
+    # The downloaded sample csv-file
+    output$downloadSample <- downloadHandler(
+        filename <- function(){
+            paste('sample_file', 'csv', sep = '.')
+        },
+        
+        content <- function(file){
+            file.copy('sample.csv', file)
+        },
+        contentType = 'text/csv'
+    )
 
 }
 
