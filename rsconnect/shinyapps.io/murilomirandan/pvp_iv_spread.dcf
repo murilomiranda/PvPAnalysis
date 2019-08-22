@@ -5,8 +5,9 @@ account: murilomirandan
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 1094351
-bundleId: 2332017
+bundleId: 2342929
 url: https://murilomirandan.shinyapps.io/pvp_iv_spread/
-when: 1566154993.88538
+when: 1566424716.26859
 asMultiple: FALSE
 asStatic: FALSE
+ignoredFiles: test_great.csv|test_master.csv|test_ultra.csv
