@@ -25,72 +25,93 @@ my_css <- "
 ui <- fluidPage(
     tags$style(my_css),
     h1("PvP IV Spread Analysis"),
-    sidebarLayout(
-        sidebarPanel(
-            radioButtons(
-                inputId = "source",
-                label = "Analysis type",
-                choices = c(
-                    "One Pokemon" = "one",
-                    "Many Pokemons (Text)" = "mtext",
-                    "Many Pokemons (File)" = "mfile"
-                )
-            ),
-            conditionalPanel(
-                condition = "input.source == 'one'",
-                selectInput('name', 'Pokemon', choices = levels(data_stats$pokemon), selected = 'Heracross'),
-                selectInput('league', 'League', choices = c('Great', 'Ultra', 'Master'), selected = 'Great'),
-                numericInput("att", "Attack IV", value = 0, min = 0, max = 15),
-                numericInput("def", "Defense IV", value = 15, min = 0, max = 15),
-                numericInput("sta", "Stamina IV", value = 15, min = 0, max = 15)
-            ),
-            conditionalPanel(
-                condition = "input.source == 'mtext'",
-                textAreaInput("text", "Enter text", 
-                              placeholder = 'Pokemon League Attack-IV Defense-IV Stamina-IV\nFor example:\nMuk Great 2 3 4\nMuk great 2 3 4\nmuk Great 2 3 4\nmuk great 2 3 4', rows = 7),
-                tags$b('Pokemon Name Entry: '), 'NameAttribute\n',
-                tags$table(id='tab01',
-                    tags$tr(
-                        tags$th(class = 'th1', 'Attribute'),
-                        tags$th(class = 'th1', 'Examples')
+    tabsetPanel(
+        tabPanel(
+            title = 'Basic',
+            sidebarLayout(
+                sidebarPanel(
+                    radioButtons(
+                        inputId = "source",
+                        label = "Analysis type",
+                        choices = c(
+                            "One Pokemon" = "one",
+                            "Many Pokemons (Text)" = "mtext",
+                            "Many Pokemons (File)" = "mfile"
+                        )
                     ),
-                    tags$tr(
-                        tags$td(class = 'td1', 'Regional variant'),
-                        tags$td(class = 'td1', 'RaticateAlolan, SandslashAlolan, ExeggutorAlolan')
+                    conditionalPanel(
+                        condition = "input.source == 'one'",
+                        selectInput('name', 'Pokemon', choices = levels(data_stats$pokemon), selected = 'Heracross'),
+                        selectInput('league', 'League', choices = c('Great', 'Ultra', 'Master'), selected = 'Great'),
+                        numericInput("att", "Attack IV", value = 0, min = 0, max = 15),
+                        numericInput("def", "Defense IV", value = 15, min = 0, max = 15),
+                        numericInput("sta", "Stamina IV", value = 15, min = 0, max = 15)
                     ),
-                    tags$tr(
-                        tags$td(class = 'td1', 'Forme'),
-                        tags$td(class = 'td1', 'DeoxysNormal, ShayminSky, GiratinaAltered')
+                    conditionalPanel(
+                        condition = "input.source == 'mtext'",
+                        textAreaInput("text", "Enter text", 
+                                      placeholder = 'Pokemon League Attack-IV Defense-IV Stamina-IV\nFor example:\nMuk Great 2 3 4\nMuk great 2 3 4\nmuk Great 2 3 4\nmuk great 2 3 4', rows = 7),
+                        tags$b('Pokemon Name Entry: '), 'NameAttribute\n',
+                        tags$table(id='tab01',
+                            tags$tr(
+                                tags$th(class = 'th1', 'Attribute'),
+                                tags$th(class = 'th1', 'Examples')
+                            ),
+                            tags$tr(
+                                tags$td(class = 'td1', 'Regional variant'),
+                                tags$td(class = 'td1', 'RaticateAlola, SandslashAlola, ExeggutorAlola')
+                            ),
+                            tags$tr(
+                                tags$td(class = 'td1', 'Forme'),
+                                tags$td(class = 'td1', 'DeoxysNormal, ShayminSky, GiratinaAltered')
+                            ),
+                            tags$tr(
+                                tags$td(class = 'td1', 'Cloak'),
+                                tags$td(class = 'td1', 'WormadamPlant, WormadamSandy, WormadamTrash')
+                            ),
+                            tags$tr(
+                                tags$td(class = 'td1', 'Sex'),
+                                tags$td(class = 'td1', 'NidoranF, NidoranM')
+                            ),
+                            tags$tr(
+                                tags$td(class = 'td1', 'Other'),
+                                tags$td(class = 'td1', 'RotomNonGhost')
+                            ),
+                            tags$tr(
+                                tags$td(class = 'td1', colspan="2", "Please remove all special characters (Space'-.): MrMime, Farfetchd, HoOH")
+                            )
+                        ),
+                        HTML("<br><br>")
                     ),
-                    tags$tr(
-                        tags$td(class = 'td1', 'Cloak'),
-                        tags$td(class = 'td1', 'WormadamPlant, WormadamSandy, WormadamTrash')
+                    conditionalPanel(
+                        condition = "input.source == 'mfile'",
+                        fileInput("file", "Select a file"),
+                        p('Please upload only ', strong('.csv'), ' extention file. If you want an example of the file to upload, please download the file below.'),
+                        downloadButton("downloadSample", label = "Download Sample"),
+                        HTML("<br><br><br>")
                     ),
-                    tags$tr(
-                        tags$td(class = 'td1', 'Sex'),
-                        tags$td(class = 'td1', 'NidoranF, NidoranM')
-                    ),
-                    tags$tr(
-                        tags$td(class = 'td1', 'Other'),
-                        tags$td(class = 'td1', 'RotomNonGhost')
-                    ),
-                    tags$tr(
-                        tags$td(class = 'td1', colspan="2", "Please remove all special characters (Space'-.): MrMime, Farfetchd, HoOH")
-                    )
+                    actionButton(inputId = 'analyze', label = 'Analyze')
                 ),
-                HTML("<br><br>")
-            ),
-            conditionalPanel(
-                condition = "input.source == 'mfile'",
-                fileInput("file", "Select a file"),
-                p('Please upload only ', strong('.csv'), ' extention file. If you want an example of the file to upload, please download the file below.'),
-                downloadButton("downloadSample", label = "Download Sample"),
-                HTML("<br><br><br>")
-            ),
-            actionButton(inputId = 'analyze', label = 'Analyze')
+                mainPanel(
+                    HTML("<br><br>"),
+                    DT::dataTableOutput("summary_iv")
+                )
+            )
         ),
-        mainPanel(
-            DT::dataTableOutput("summary_iv")
+        tabPanel(
+            title = 'Evolved',
+            sidebarLayout(
+                sidebarPanel(
+                    checkboxGroupInput('league2', 'League:', c('Great' = 'great', 'Ultra' = 'ultra','Master' = 'master'), selected = 'great'),
+                    checkboxGroupInput('isevolved', 'Evolved from:', c('second' = 'second', 'final' = 'final'), selected = 'final'),
+                    textAreaInput("text2", "Enter text", 
+                                  placeholder = 'Pokemon Attack-IV Defense-IV Stamina-IV\nFor example:\nMuk 2 3 4\nmuk 2 3 4', rows = 7)
+                ),
+                mainPanel(
+                    HTML("<br><br>"),
+                    DT::dataTableOutput("summary_iv2")
+                )
+            )
         )
     )
 )
